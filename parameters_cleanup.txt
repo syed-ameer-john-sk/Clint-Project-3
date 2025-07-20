@@ -1,5 +1,4 @@
 PROJECT_CODE:	    {project_to_clean}		
-RUN_NUMBER:			{run_number_to_clean}
 DESCRIPTION:			 
 SOLVER_VERSION:		18.06.007-Mixed
 QUEUE:			    aerox
@@ -19,6 +18,8 @@ TEMPLATE:		    cleanup_template
 # Case 3: RUN job starting from an existing RUN folder
 #			SIM_FILE= name of the existing simulation in the RUN folder. 
 #			ITERATOR= the new maximum steps value.  
+#
+# The RUN_NUMBER parameter is now automatically generated and incremented.
 
 # Available SOLVER_VERSIONS ->  
 # 15.06-008-Mixed (2020 version to use)

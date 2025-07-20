@@ -275,7 +275,29 @@ class WorkflowArgs:
 	@run_number.setter
 	@not_none() 
 	def run_number(self, value):
-		self._run_number = Regex.sub(value, "_", Regex.spec) 
+		if Uniq.cleanup:
+			self._run_number = Regex.sub(value, "_", Regex.spec)
+		else:
+			self._run_number = self._get_new_run_number()
+
+	def _get_new_run_number(self) -> str:
+		project_dir = os.path.join(Uniq.config.project_root_dir, self.project_code)
+		if not os.path.exists(project_dir):
+			return "1"
+
+		run_numbers = []
+		with os.scandir(project_dir) as project_folder:
+			for run_folder in project_folder:
+				if run_folder.is_dir():
+					run_name = os.path.basename(run_folder.path)
+					run_split = run_name.split("-")
+					if len(run_split) == 2:
+						run_numbers.append(int(run_split[1]))
+
+		if not run_numbers:
+			return "1"
+
+		return str(max(run_numbers) + 1)
 
 	@property 
 	def description(self):
