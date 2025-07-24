@@ -275,29 +275,7 @@ class WorkflowArgs:
 	@run_number.setter
 	@not_none() 
 	def run_number(self, value):
-		if Uniq.cleanup:
-			self._run_number = Regex.sub(value, "_", Regex.spec)
-		else:
-			self._run_number = self._get_new_run_number()
-
-	def _get_new_run_number(self) -> str:
-		project_dir = os.path.join(Uniq.config.project_root_dir, self.project_code)
-		if not os.path.exists(project_dir):
-			return "1"
-
-		run_numbers = []
-		with os.scandir(project_dir) as project_folder:
-			for run_folder in project_folder:
-				if run_folder.is_dir():
-					run_name = os.path.basename(run_folder.path)
-					run_split = run_name.split("-")
-					if len(run_split) == 2:
-						run_numbers.append(int(run_split[1]))
-
-		if not run_numbers:
-			return "1"
-
-		return str(max(run_numbers) + 1)
+		self._run_number = Regex.sub(value, "_", Regex.spec)
 
 	@property 
 	def description(self):
@@ -722,7 +700,47 @@ class Project:
 		)
 		if Uniq.rerun and Uniq.user_dir != os.path.join(self.run_dir, "RUN"):
 			Uniq.rerun = False 
+		self._set_run_dir(WA)
 		self._set_jobs(WA) 
+
+	def _set_run_dir(self, WA: WorkflowArgs):
+		"""
+		Sets the run directory based on the project structure and job steps.
+		"""
+		project_code = WA.project_code
+		run_number_str = WA.run_number
+
+		# Construct the base project directory
+		project_dir = os.path.join(Uniq.config.project_root_dir, project_code)
+
+		# Create the project directory if it doesn't exist
+		if not os.path.exists(project_dir):
+			make_dir(project_dir, f"Cannot create project folder {project_dir}")
+			set_mode_bits(project_dir, 0o777)
+
+		# Determine the run number
+		run_number = 1
+		run_folders = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d)) and d.startswith(f"{project_code}_")]
+		if run_folders:
+			latest_run_folder = max(run_folders, key=lambda d: int(d.split('_')[-1]))
+			latest_run_number = int(latest_run_folder.split('_')[-1])
+
+			pre_subfolder_exists = os.path.exists(os.path.join(project_dir, latest_run_folder, "Pre"))
+
+			# If "Pre" subfolder exists and the user is trying to run a "Pre" job again
+			if pre_subfolder_exists and "PRE" in Uniq.steps:
+				run_number = latest_run_number + 1
+			else:
+				run_number = latest_run_number
+
+		# Construct the run directory path
+		self.name = f"{project_code}_{run_number:03d}"
+		self.run_dir = os.path.join(project_dir, self.name)
+		self.dir = project_dir
+
+		# Create the run directory if it doesn't exist
+		if not os.path.exists(self.run_dir):
+			make_dir(self.run_dir, f"Cannot create run folder {self.run_dir}")
 
 	def _set_jobs(self, WA : WorkflowArgs):
 		jobs = [] 
