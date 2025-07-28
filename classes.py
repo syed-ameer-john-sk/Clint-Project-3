@@ -708,7 +708,6 @@ class Project:
 		Sets the run directory based on the project structure and job steps.
 		"""
 		project_code = WA.project_code
-		run_number_str = WA.run_number
 
 		# Construct the base project directory
 		project_dir = os.path.join(Uniq.config.project_root_dir, project_code)
@@ -718,20 +717,21 @@ class Project:
 			make_dir(project_dir, f"Cannot create project folder {project_dir}")
 			set_mode_bits(project_dir, 0o777)
 
-		# Determine the run number
-		run_number = 1
+		# Scan for existing run folders
 		run_folders = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d)) and d.startswith(f"{project_code}_")]
+
+		latest_run_number = 0
 		if run_folders:
 			latest_run_folder = max(run_folders, key=lambda d: int(d.split('_')[-1]))
 			latest_run_number = int(latest_run_folder.split('_')[-1])
 
-			pre_subfolder_exists = os.path.exists(os.path.join(project_dir, latest_run_folder, "Pre"))
+		run_number = latest_run_number
 
-			# If "Pre" subfolder exists and the user is trying to run a "Pre" job again
-			if pre_subfolder_exists and "PRE" in Uniq.steps:
-				run_number = latest_run_number + 1
-			else:
-				run_number = latest_run_number
+		# Handle "Pre" job
+		if "PRE" in Uniq.steps:
+			run_number += 1
+		elif not run_folders:
+			run_number = 1
 
 		# Construct the run directory path
 		self.name = f"{project_code}_{run_number:03d}"
